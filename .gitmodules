@@ -1,0 +1,4 @@
+[submodule "deps/breakpad.git"]
+	path = deps/breakpad.git
+	url = https://github.com/google/breakpad.git
+	branch = master
