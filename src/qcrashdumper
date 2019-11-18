@@ -1,36 +1,71 @@
 #!/bin/sh
 # NOTE : $PWD always contains the calling dir
 
+out_dir=$PWD
+scr_dir="$(dirname "$(readlink -f "$0")")"
+
+uname_out="$(uname -s)"
+case "${uname_out}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+    CYGWIN*)    machine=Cygwin;;
+    MINGW*)     machine=MinGw;;
+	MSYS*)      machine=MSys;;
+    *)          machine="UNKNOWN:${uname_out}"
+esac
+echo "[INFO] machine is ${machine}."
+
+# try to add paths
+if ! type "dump_syms" > /dev/null; then
+	if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
+		PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/tools/windows/binaries"
+	else
+		PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/tools/linux/dump_syms"
+	fi
+fi
+if ! type "minidump_stackwalk" > /dev/null; then
+	PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/processor"
+fi
+
 # check for dependencies
 if ! type "dump_syms" > /dev/null; then
-	echo "[ERROR] dump_syms.exe not found in PATH."
+	echo "[ERROR] dump_syms not found in PATH."
 	exit 1
 fi
 if ! type "minidump_stackwalk" > /dev/null; then
-	echo "[ERROR] minidump_stackwalk.exe not found in PATH."
+	echo "[ERROR] minidump_stackwalk not found in PATH."
 	exit 1
 fi
 
 # check arg
 if [[ ! $1 ]]; then
-	printf "\n[ERROR] missing arguments, provide symbols file name (*.pdb)\n\n" >&2; 
+	if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
+		printf "\n[ERROR] missing arguments, provide symbols file name (*.pdb)\n\n" >&2; 
+	else
+		printf "\n[ERROR] missing arguments, provide binary file name\n\n" >&2; 
+	fi
 	exit 1; 
 fi
+
 # get arg
 pdb_argfile=$1
 pdb_basefile=$(basename "${pdb_argfile}")
 file_base=$1
-out_dir=$PWD
-# check if contains extension to update base filename
-if [[ $pdb_argfile = *".pdb"* ]]; then
-	file_base="${pdb_basefile%.*}"
-else
-	pdb_argfile=${pdb_argfile}.pdb
+# add pdb extension in windows if missing
+if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
+	# check if contains extension to update base filename
+	if [[ $pdb_argfile = *".pdb"* ]]; then
+		file_base="${pdb_basefile%.*}"
+	else
+		pdb_argfile=${pdb_argfile}.pdb
+	fi
 fi
-pdb_basefile=${file_base}.pdb
-#echo "[DEBUG] pdb_argfile   = ${pdb_argfile}"
-#echo "[DEBUG] pdb_basefile  = ${pdb_basefile}"
-#echo "[DEBUG] file_base     = ${file_base}"
+#
+##pdb_basefile=${file_base}.pdb
+##echo "[DEBUG] pdb_argfile   = ${pdb_argfile}"
+##echo "[DEBUG] pdb_basefile  = ${pdb_basefile}"
+##echo "[DEBUG] file_base     = ${file_base}"
+
 # check pdb file exists
 if [[ ! -e $pdb_argfile ]]; then
     printf "\n[ERROR] symbols file with name :\n%s \ndoes not exist!\n\n" $pdb_argfile
@@ -40,7 +75,7 @@ fi
 dmp_file=${file_base}.dmp
 # check dump file exists
 if [[ ! -e $dmp_file ]]; then
-    printf "\n[ERROR] dump file :\n%s \ndoes not exist!\n\n" $dmp_file
+    printf "\n[ERROR] dump file :\n%s \ndoes not exist in ${out_dir}/!\n\n" $dmp_file
     exit 1
 fi
 #echo "[DEBUG] dmp_file      = ${dmp_file}"
@@ -52,29 +87,29 @@ dump_syms ${pdb_argfile} > ${sym_fullfile}
 sym_basefile=$(basename "${sym_fullfile}")
 #echo "[DEBUG] sym_basefile  = ${sym_basefile}"
 
-# get target symbols dir
-md_out=$(minidump_stackwalk ${dmp_file} symbols 2>&1 | grep ${sym_basefile})
-#echo "[DEBUG] md_out        = ${md_out}"
-# match to look for in ${md_out}
-test_match="INFO: No symbol file at "
-# get match offset and clean it
-test_out=$(echo $md_out | grep -b -o "$test_match")
-test_offset=$(echo "${test_out%:INFO*}")
-# add match length to offset
-declare -i test_intoff
-test_intoff="${test_offset}+${#test_match}-1"
-sym_targ=${md_out:${test_intoff}}
-#echo "[DEBUG] sym_targ      = ${sym_targ}"
-sym_dir=$(dirname "${sym_targ}")
-#echo "[DEBUG] sym_dir       = ${sym_dir}"
-
-# create symbols dir and copy ${sym_fullfile}
-mkdir -p ${sym_dir}
-cp ${sym_fullfile} ${sym_targ}
-
-# get analysis and put in file
-minidump_stackwalk ${dmp_file} symbols > ${file_base}_analysis.txt  2>&1
-
-# print 50 lines after "Crash" match
-awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${file_base}_analysis.txt
-#echo "[DEBUG] success!"
+## get target symbols dir
+#md_out=$(minidump_stackwalk ${dmp_file} symbols 2>&1 | grep ${sym_basefile})
+##echo "[DEBUG] md_out        = ${md_out}"
+## match to look for in ${md_out}
+#test_match="INFO: No symbol file at "
+## get match offset and clean it
+#test_out=$(echo $md_out | grep -b -o "$test_match")
+#test_offset=$(echo "${test_out%:INFO*}")
+## add match length to offset
+#declare -i test_intoff
+#test_intoff="${test_offset}+${#test_match}-1"
+#sym_targ=${md_out:${test_intoff}}
+##echo "[DEBUG] sym_targ      = ${sym_targ}"
+#sym_dir=$(dirname "${sym_targ}")
+##echo "[DEBUG] sym_dir       = ${sym_dir}"
+#
+## create symbols dir and copy ${sym_fullfile}
+#mkdir -p ${sym_dir}
+#cp ${sym_fullfile} ${sym_targ}
+#
+## get analysis and put in file
+#minidump_stackwalk ${dmp_file} symbols > ${file_base}_analysis.txt  2>&1
+#
+## print 50 lines after "Crash" match
+#awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${file_base}_analysis.txt
+##echo "[DEBUG] success!"

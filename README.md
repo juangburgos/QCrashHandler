@@ -1,33 +1,38 @@
 ## How to Use
 
-Compile necessary binaries using **MSys2** (it does not matter that they are compiled with `gcc`).
+Compile necessary binaries using `gcc` (use **MSys2** on *Widnows*).
 
 ```bash
 which gcc
 
-cd "${REPOS_DIR}/breakpad.git"
+cd ${PWD}/deps/breakpad.git
 ./configure
 make
 
-ls -la ./src/processor/minidump_stackwalk
+ls -la ${PWD}/src/processor/minidump_stackwalk
 
 subl ~/.bash_profile
 ```
 
 Add to `PATH` necessary binary directories.
 
-```
-PATH="${PATH}:${REPOS_DIR}/breakpad.git/src/tools/windows/binaries"
-PATH="${PATH}:${REPOS_DIR}/breakpad.git/src/processor"
+```bash
+# windows
+PATH="${PATH}:${PWD}/deps/breakpad.git/src/tools/windows/binaries"
+PATH="${PATH}:${PWD}/deps/breakpad.git/src/processor"
+
+# linux
+PATH="${PATH}:${PWD}/deps/breakpad.git/src/tools/linux/dump_syms"
+PATH="${PATH}:${PWD}/deps/breakpad.git/src/processor"
 ```
 
-Restart MSys2.
+On windows:
 
 ```bash
 which dump_syms
 which minidump_stackwalk
 
-cd ${REPOS_DIR}/breakpad.git/qt_crashandler/test/debug
+cd ${PWD}/deps/breakpad.git/qt_crashandler/test/debug
 
 dump_syms test.pdb > test.sym
 
