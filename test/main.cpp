@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-	// We put the dumps in the user's home directory for this example:
+	// write the dumps in the user's desktop:
 	Breakpad::CrashHandler::instance()->Init(QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
 
 	// Test

@@ -12,10 +12,13 @@ TEMPLATE = app
 
 include($$PWD/../src/qcrashhandler.pri)
 
-QMAKE_LFLAGS_RELEASE += /MAP
-QMAKE_CFLAGS_RELEASE += /Zi
-QMAKE_LFLAGS_RELEASE += /debug /opt:ref
+# create debug symbols for release builds
+# NOTE : need to disable optimization, else dump files will point to incorrect source code lines
+CONFIG *= force_debug_info
+QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO -= -O2
 
 SOURCES += main.cpp
 
 include($$PWD/../deps/add_qt_path.pri)
+
+

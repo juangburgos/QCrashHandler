@@ -9,9 +9,6 @@ namespace Breakpad {
         static CrashHandler* instance();
 		void Init(const QString&  reportPath);
     
-        void setReportCrashesToSystem(bool report);
-        bool writeMinidump();
-    
     private:
         CrashHandler();
         ~CrashHandler();

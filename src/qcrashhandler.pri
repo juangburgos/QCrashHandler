@@ -69,5 +69,3 @@ unix:SOURCES += $$PWD/../deps/breakpad.git/src/common/linux/guid_creator.cc
 unix:SOURCES += $$PWD/../deps/breakpad.git/src/common/linux/elfutils.cc
 unix:SOURCES += $$PWD/../deps/breakpad.git/src/common/string_conversion.cc
 unix:SOURCES += $$PWD/../deps/breakpad.git/src/common/convert_UTF.c
-#breakpad app need debug info inside binaries
-unix:QMAKE_CXXFLAGS+=-g

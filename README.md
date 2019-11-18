@@ -59,17 +59,28 @@ Show show call stack starting with the crash on the top:
 
 **NOTE** : there are references to `main.cpp` and line numbers which provide useful information.
 
-**NOTE** : we need a `*.pdb` file for release builds (it does not provide as much info as for debug builds, but at least we get the file name and previous line). To export debug symbols for release builds, configure the project as follows (reference `3`):
+**NOTE** : we need a `*.pdb` file for release builds (it does not provide as much info as for debug builds, but at least we get the file name and previous line). To export debug symbols for release builds:
+
+In **Qt** simply add to the `*.pro` project file:
+
+```cmake
+CONFIG *= force_debug_info
+QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO -= -O2
+```
+
+Alternatively, symbols for *Release* versions can be obtained by configuring the *Visual Studio* project as follows:
 
 * Open the **Properties** dialog box for the project.
 
-* Click the **C/C++** node. Set **Debug Information Format** to `C7 compatible (/Z7)` or `Program Database (/Zi)` (**NOTE** : so far tested only with `Program Database (/Zi)`).
+* Click the **C/C++** node. Set **Debug Information Format** to `Program Database (/Zi)`.
+
+* Select the **Optimization** node. Set **Optimization** to `Disabled (/Od)`.
 
 * Expand **Linker** and click the **General** node. Set **Enable Incremental Linking** to `No (/INCREMENTAL:NO)`.
 
 * Select the **Debugging** node. Set **Generate Debug Info** to `Yes (/DEBUG)`.
 
-* Select the **Optimization** node. Set **References** to `/OPT:REF` and **Enable COMDAT Folding** to `/OPT:ICF`.
+* Select the **Optimization** node. Set **References** to `/OPT:REF`.
 
 **VISUAL STUDIO** : to load the minidump files in VisualStudio follow reference 4.
 
@@ -193,3 +204,5 @@ The breakpad source code cane be cloned from [here](https://chromium.googlesourc
 * 4. <https://docs.microsoft.com/en-us/visualstudio/debugger/using-dump-files?view=vs-2019>
 
 * 5. <https://developer.mozilla.org/en-US/docs/Mozilla/Debugging/Debugging_a_minidump>
+
+* 6. <https://stackoverflow.com/questions/6993061/build-qt-in-release-with-debug-info-mode/35704181#35704181>
