@@ -9,6 +9,18 @@
 bin_file=$1
 dmp_file=$2
 
+# check running machine
+uname_out="$(uname -s)"
+case "${uname_out}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+    CYGWIN*)    machine=Cygwin;;
+    MINGW*)     machine=MinGw;;
+	MSYS*)      machine=MSys;;
+    *)          machine="UNKNOWN:${uname_out}"
+esac
+#echo "[INFO] machine is ${machine}."
+
 # check arg
 if [[ ! $bin_file ]]; then
 	if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
@@ -22,18 +34,6 @@ if [[ ! $dmp_file ]]; then
 	printf "\n[ERROR] missing second argument; provide minidump file (*.dmp)\n\n" >&2; 
 	exit 1; 
 fi
-
-# check running machine
-uname_out="$(uname -s)"
-case "${uname_out}" in
-    Linux*)     machine=Linux;;
-    Darwin*)    machine=Mac;;
-    CYGWIN*)    machine=Cygwin;;
-    MINGW*)     machine=MinGw;;
-	MSYS*)      machine=MSys;;
-    *)          machine="UNKNOWN:${uname_out}"
-esac
-#echo "[INFO] machine is ${machine}."
 
 # try to add relevant paths
 scr_dir="$(dirname "$(readlink -f "$0")")"
