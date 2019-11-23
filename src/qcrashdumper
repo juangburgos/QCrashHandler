@@ -1,13 +1,13 @@
 #!/bin/sh
 # arguments :
-# 1) symbols file on Windows MSys2 (*.pdb), binary file on Linux
-# 2) minidump file (*.dmp)
-# usage windows (pdb file)  : qcrashdumper test.pdb ~/Desktop/xxxxxxx.dmp
-# usage linux (binary file) : qcrashdumper test ~/Desktop/xxxxxxx.dmp
+# 1) minidump file (*.dmp)
+# 2) symbol files directory; on Windows, path where *.pdb files are, on Linux path where binaries are
+# example  : qcrashdumper mydumpfile.dmp ~/Desktop/Repos/binaries
 
 # get args
-bin_file=$1
-dmp_file=$2
+
+dmp_file=$1
+bin_dir=$2
 
 # check running machine
 uname_out="$(uname -s)"
@@ -22,16 +22,16 @@ esac
 #echo "[INFO] machine is ${machine}."
 
 # check arg
-if [[ ! $bin_file ]]; then
-	if [[ $machine == "Win" ]]; then
-		printf "\n[ERROR] missing first argument; provide symbols file name (*.pdb)\n\n" >&2; 
-	else
-		printf "\n[ERROR] missing first argument; provide binary file name\n\n" >&2; 
-	fi
+if [[ ! "${dmp_file}" ]]; then
+	printf "\n[ERROR] missing first argument; provide minidump file (*.dmp)\n\n" >&2; 
 	exit 1; 
 fi
-if [[ ! $dmp_file ]]; then
-	printf "\n[ERROR] missing second argument; provide minidump file (*.dmp)\n\n" >&2; 
+if [[ ! -d "${bin_dir}" ]]; then
+	if [[ $machine == "Win" ]]; then
+		printf "\n[ERROR] missing second argument; provide symbols files path (*.pdb)\n\n" >&2; 
+	else
+		printf "\n[ERROR] missing second argument; provide symbols files path\n\n" >&2; 
+	fi
 	exit 1; 
 fi
 
@@ -58,36 +58,47 @@ if ! type "minidump_stackwalk" > /dev/null 2>&1; then
 	exit 1
 fi
 
-# get target symbols dir (adding *.sym to binary file)
-bin_basefile=$(basename "${bin_file}")
-md_out=$(minidump_stackwalk ${dmp_file} symbols 2>&1 | grep ${bin_basefile}.sym)
-#echo "[DEBUG] md_out = ${md_out}"
+# clear any previous symbols dir
+if [[ -d "symbols" ]]; then
+	rm -rf "symbols"
+fi
 
-# match to look for in ${md_out}
-test_match="INFO: No symbol file at "
-# get offset when match starts (format OFFSET:MATCH)
-test_out=$(echo $md_out | grep -b -o "$test_match")
-# parse the offset value
-test_offset=$(echo "${test_out%:INFO*}")
-# add match length to match offset to get total offset
-declare -i test_intoff
-test_intoff="${test_offset}+${#test_match}-1"
-# get string starting from total offset
-sym_targ=${md_out:${test_intoff}}
-#echo "[DEBUG] sym_targ = ${sym_targ}"
-sym_dir=$(dirname "${sym_targ}")
-#echo "[DEBUG] sym_dir  = ${sym_dir}"
-
-# create symbols dir
-mkdir -p ${sym_dir}
-# create symbols file
-dump_syms ${bin_file} > ${bin_basefile}.sym
-# move to expected location
-mv ${bin_basefile}.sym ${sym_targ}
+# find out which dependencies minidump_stackwalk is expecting
+sym_marker="No symbol file at "
+IFS=$'\n'
+list_lines=( $(minidump_stackwalk "${dmp_file}" symbols 2>&1 | grep "${sym_marker}") )
+for f in ${!list_lines[@]}; do
+    curr_line=${list_lines[$f]}
+    # remove up to marker
+    curr_line="${curr_line#*${sym_marker}}"
+    # overwrite array entry
+    list_lines[$f]=${curr_line}
+    IFS=$'/'
+    list_parts=( ${curr_line} )
+    # read parts
+    sym_dir=${list_parts[0]}
+    bin_file=${list_parts[1]}
+    uniq_dir=${list_parts[2]}
+    sym_file=${list_parts[3]}
+    # check if binary dependency exists in given binary path
+    bin_filepath=${bin_dir}/${bin_file}
+    if [[ ! -e ${bin_filepath} ]]; then
+    	echo "[WARN] ${bin_file} not found in given path, could not create ${sym_file}."
+	    continue
+	fi
+	# create target symbols dir
+	mkdir "${sym_dir}"
+	mkdir "${sym_dir}/${bin_file}"
+	mkdir "${sym_dir}/${bin_file}/${uniq_dir}"
+	dump_syms "${bin_filepath}" > ${curr_line}
+	echo "[INFO] ${curr_line} created successfully."
+done
 
 # get analysis and put in file
-minidump_stackwalk ${dmp_file} symbols > ${bin_basefile}.txt  2>&1
+dmp_basefile=$(basename "${dmp_file}")
+minidump_stackwalk "${dmp_file}" symbols > ${dmp_basefile}.txt  2>&1
 
 # print 50 lines after "Crash" match
-awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${bin_basefile}.txt
-#echo "[DEBUG] success!"
+awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${dmp_basefile}.txt
+echo ""
+echo "[INFO] full results written down to ${dmp_basefile}.txt."

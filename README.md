@@ -129,113 +129,59 @@ Alternatively, symbols for *Release* versions can be obtained by configuring the
 
 ### Script
 
-A `bash` script was developed to automate the analysis of dump `*.dmp` files. It can be placed in any directory already added to the `PATH`, e,g,:
+A [`bash` script was developed](./src/qcrashdumper) to automate the analysis of dump `*.dmp` files. It can be added to the `PATH` for ease of use, e,g,:
 
 ```bash
-touch ${PWD}/src/qcrashdumper
 PATH="${PATH}:${PWD}/src/"
 which qcrashdumper
-# pass in binary/symbols file as first argument, and minidump as second argument
-qcrashdumper test.pdb test.dmp
+# pass minidump as first argument
+qcrashdumper test.dmp /path/to/pdbfiles
 ```
 
-Then pasting the contents:
+---
 
-```bash
-#!/bin/sh
-# arguments :
-# 1) symbols file on Windows MSys2 (*.pdb), binary file on Linux
-# 2) minidump file (*.dmp)
-# usage windows (pdb file)  : qcrashdumper test.pdb ~/Desktop/xxxxxxx.dmp
-# usage linux (binary file) : qcrashdumper test ~/Desktop/xxxxxxx.dmp
+## Windows Errors
 
-# get args
-bin_file=$1
-dmp_file=$2
+The `dump_syms.exe` tool provided by the Windows distribution of breakpad sometimes does not generate the symbols and displays an error similar to:
 
-# check arg
-if [[ ! $bin_file ]]; then
-    if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
-        printf "\n[ERROR] missing first argument; provide symbols file name (*.pdb)\n\n" >&2; 
-    else
-        printf "\n[ERROR] missing first argument; provide binary file name\n\n" >&2; 
-    fi
-    exit 1; 
-fi
-if [[ ! $dmp_file ]]; then
-    printf "\n[ERROR] missing second argument; provide minidump file (*.dmp)\n\n" >&2; 
-    exit 1; 
-fi
-
-# check running machine
-uname_out="$(uname -s)"
-case "${uname_out}" in
-    Linux*)     machine=Linux;;
-    Darwin*)    machine=Mac;;
-    CYGWIN*)    machine=Cygwin;;
-    MINGW*)     machine=MinGw;;
-    MSYS*)      machine=MSys;;
-    *)          machine="UNKNOWN:${uname_out}"
-esac
-#echo "[INFO] machine is ${machine}."
-
-# try to add relevant paths
-scr_dir="$(dirname "$(readlink -f "$0")")"
-if ! type "dump_syms" > /dev/null 2>&1; then
-    if [[ $machine -ne "Linux" ]] && [[ $machine -ne "Mac" ]]; then
-        PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/tools/windows/binaries"
-    else
-        PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/tools/linux/dump_syms"
-    fi
-fi
-if ! type "minidump_stackwalk" > /dev/null 2>&1; then
-    PATH="${PATH}:${scr_dir}/../deps/breakpad.git/src/processor"
-fi
-
-# check for dependencies
-if ! type "dump_syms" > /dev/null 2>&1; then
-    echo "[ERROR] dump_syms not found in PATH."
-    exit 1
-fi
-if ! type "minidump_stackwalk" > /dev/null 2>&1; then
-    echo "[ERROR] minidump_stackwalk not found in PATH."
-    exit 1
-fi
-
-# get target symbols dir (adding *.sym to binary file)
-bin_basefile=$(basename "${bin_file}")
-md_out=$(minidump_stackwalk ${dmp_file} symbols 2>&1 | grep ${bin_basefile}.sym)
-#echo "[DEBUG] md_out = ${md_out}"
-
-# match to look for in ${md_out}
-test_match="INFO: No symbol file at "
-# get offset when match starts (format OFFSET:MATCH)
-test_out=$(echo $md_out | grep -b -o "$test_match")
-# parse the offset value
-test_offset=$(echo "${test_out%:INFO*}")
-# add match length to match offset to get total offset
-declare -i test_intoff
-test_intoff="${test_offset}+${#test_match}-1"
-# get string starting from total offset
-sym_targ=${md_out:${test_intoff}}
-#echo "[DEBUG] sym_targ = ${sym_targ}"
-sym_dir=$(dirname "${sym_targ}")
-#echo "[DEBUG] sym_dir  = ${sym_dir}"
-
-# create symbols dir
-mkdir -p ${sym_dir}
-# create symbols file
-dump_syms ${bin_file} > ${bin_basefile}.sym
-# move to expected location
-mv ${bin_basefile}.sym ${sym_targ}
-
-# get analysis and put in file
-minidump_stackwalk ${dmp_file} symbols > ${bin_basefile}.txt  2>&1
-
-# print 50 lines after "Crash" match
-awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${bin_basefile}.txt
-#echo "[DEBUG] success!"
 ```
+CoCreateInstance CLSID_DiaSource {E6756135-1E65-4D17-8576-610761398C3C} failed (msdia*.dll unregistered?)
+Open failed
+```
+
+This is because requires an specific `*.dll` from some Visual Studio version registered on the system. Looking at the source code of `pdb_source_line_writer.cc`, the following lines:
+
+```c++
+class DECLSPEC_UUID("B86AE24D-BF2F-4ac9-B5A2-34B14E4CE11D") DiaSource100;
+class DECLSPEC_UUID("761D3BCD-1304-41D5-94E8-EAC54E4AC172") DiaSource110;
+class DECLSPEC_UUID("3BFCEA48-620F-4B6B-81F7-B9AF75454C7D") DiaSource120;
+class DECLSPEC_UUID("E6756135-1E65-4D17-8576-610761398C3C") DiaSource140;
+
+// If the CoCreateInstance call above failed, msdia*.dll is not registered.
+// We can try loading the DLL corresponding to the #included DIA SDK, but
+// the DIA headers don't provide a version. Lets try to figure out which DIA
+// version we're compiling against by comparing CLSIDs.
+const wchar_t *msdia_dll = nullptr;
+if (CLSID_DiaSource == _uuidof(DiaSource100)) {
+msdia_dll = L"msdia100.dll";
+} else if (CLSID_DiaSource == _uuidof(DiaSource110)) {
+msdia_dll = L"msdia110.dll";
+} else if (CLSID_DiaSource == _uuidof(DiaSource120)) {
+msdia_dll = L"msdia120.dll";
+} else if (CLSID_DiaSource == _uuidof(DiaSource140)) {
+msdia_dll = L"msdia140.dll";
+}
+```
+
+indicate that the error above is caused by the missing `msdia140.dll` (deduced by matching the `E6756135-1E65-4D17...` from the error line to the source code).
+
+The solution is to find `msdia140.dll` in your system (simply search for it in `C:`, if not present then download the appropriate VisualStudio redistributables) and copy it to `C:\Program Files\Common Files\Microsoft Shared\VC` directory. Then open a command line instance with administrator rights and run the command:
+
+```cmd
+C:\Windows\system32\regsvr32 "C:\Program Files\Common Files\Microsoft Shared\VC\msdia140.dll"
+```
+
+After this, `dump_syms.exe` should work properly.
 
 ---
 
@@ -243,7 +189,7 @@ awk '/Crash/ {for(i=1; i<=50; i++) {getline; print}}' ${bin_basefile}.txt
 
 Simply open the *Visual Studio* project with the *exact* source code version used to create the binary and build to create the relevant debug symbols. Then go to `File -> Open -> File...` and open the dump file.
 
-A window inside Visual Studio displays the dump file summary info. Click the `Debug with Native Only` on the right sid eof the windows, and then the debugger should show the crash line, call stack and other debug information.
+A window inside Visual Studio displays the dump file summary info. Click the `Debug with Native Only` on the right side of the windows, and then the debugger should show the crash line, call stack and other debug information.
 
 ---
 
