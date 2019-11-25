@@ -82,14 +82,26 @@ for f in ${!list_lines[@]}; do
     sym_file=${list_parts[3]}
     # check if binary dependency exists in given binary path
     bin_filepath=${bin_dir}/${bin_file}
+    # on linux, debug symbols might be in the binary itself or in the file pointed by the gnu_debuglink stored in the binary file
+    if [[ $machine == "Linux" ]]; then
+    	# read gnu_debuglink
+		sym_file=$(readelf --string-dump=.gnu_debuglink "${bin_filepath}" | sed -n '/]/{s/.* //;p;q}')
+		# if gnu_debuglink file exists, then update file name used to extract symbols
+		if [[ ! -e ${sym_file} ]]; then
+			sym_file=${bin_dir}/${sym_file}
+		fi
+		if [ -f "${sym_file}" ]; then
+		    bin_filepath="${sym_file}"
+		fi
+	fi
     if [[ ! -e ${bin_filepath} ]]; then
     	echo "[WARN] ${bin_file} not found in given path, could not create ${sym_file}."
 	    continue
 	fi
 	# create target symbols dir
-	mkdir "${sym_dir}"
-	mkdir "${sym_dir}/${bin_file}"
-	mkdir "${sym_dir}/${bin_file}/${uniq_dir}"
+	mkdir -p "${sym_dir}"
+	mkdir -p "${sym_dir}/${bin_file}"
+	mkdir -p "${sym_dir}/${bin_file}/${uniq_dir}"
 	dump_syms "${bin_filepath}" > ${curr_line}
 	echo "[INFO] ${curr_line} created successfully."
 done
