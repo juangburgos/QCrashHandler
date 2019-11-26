@@ -22,6 +22,6 @@ include($$PWD/../src/qcrashhandler.pri)
 
 SOURCES += main.cpp
 
-include($$PWD/../deps/add_qt_path.pri)
+include($$PWD/../src/qpostprocess.pri)
 
 

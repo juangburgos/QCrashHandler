@@ -187,21 +187,80 @@ After this, `dump_syms.exe` should work properly.
 
 ## Visual Studio Analysis (Windows)
 
-Simply open the *Visual Studio* project with the *exact* source code version used to create the binary and build to create the relevant debug symbols. Then go to `File -> Open -> File...` and open the dump file.
+Open the *Visual Studio* project with the *exact* source code version used to create the binary and build to create the relevant debug symbols. Then go to `File -> Open -> File...` and open the dump file. A window inside Visual Studio displays the dump file summary info. 
 
-A window inside Visual Studio displays the dump file summary info. Click the `Debug with Native Only` on the right side of the windows, and then the debugger should show the crash line, call stack and other debug information.
+![alt text](./doc/01.jpg)
+
+Normally if the `Debug with Native Only` on the right side of the windows is clicked, a debugging session should start, but must likely a *No compatible code running* error will appear. 
+
+![alt text](./doc/02.jpg)
+
+To fix this, it is necessary to reproduce the full environment in which the application crashed. Note the window displaying the dump file info shows the modules involved in the crash including:
+
+```
+C:\Users\User\Desktop\test\test.exe
+
+// other modules...
+
+C:\Users\User\Desktop\test\Qt5Core.dll
+
+// other modules...
+```
+
+This is the location in the *Deployment* machine where the crash occured, but this location does not exist yet in the *Development* machine. So after deploying **the exact same version of the application, in the same location**, now is possible to click the `Debug with Native Only` on the right side of the windows, and then the debugger should show the crash line, call stack and other debug information.
+
+![alt text](./doc/03.jpg)
 
 ---
 
 ## QtCreator Analysis (Linux)
 
-First convert the dump file into a core file using breakpad's `minidump-2-core` tool:
+First make sure the `PATH` includes `${PWD}/deps/breakpad.git/src/tools/linux/md2core`, then convert the dump file into a core file using breakpad's `minidump-2-core` tool:
 
 ```bash
-minidump-2-core test/test.dmp > test.core
+minidump-2-core test.dmp > test.core
 ```
 
-Then open the *QtCreator* project with the *exact* source code version used to create the binary and build to create the relevant debug binary files. Then go to `Debug -> Start Debugging -> Load Core File...`. Then select the core file and the compiled binary and click `OK`. The debugger should show the crash line, call stack and other debug information.
+Open the *QtCreator* project with the *exact* source code version used to create the binary and build to create the relevant debug binary files. 
+
+Go to `Debug -> Start Debugging -> Load Core File...`. Then select the core file and the compiled binary and click `OK`. 
+
+Normally the debugger should show the crash line, call stack and other debug information.
+
+![alt text](./doc/04.jpg)
+
+If the application uses shared libraries though, the full call stack might not me shown correctly. One must pay attention to the `Application Output` messages;
+
+```
+Debugging starts
+Could not load shared library symbols for XXX libraries, e.g. ...
+```
+
+This means it is necessary to tell the debugger where are the shared libraries used by the application. To to this go to `Tools -> Options...` change to the `GDB` tab and in the `Additional Starup Commands` add a line similar to:
+
+```
+set solib-search-path /path/to/the/shared/libs
+```
+
+Then restart the debugging session.
+
+---
+
+## Debbugging symbols on Linux
+
+On Windows, debugging symbols are separated automatically from the binary files (`*.exe` or `*.dll`) into `*.pdb` files. This reduces the size of the binary files to be deployed. 
+
+On Linux, this has to be done manually, the resulting binaries are too large because they contain all the debug information. To separate them, use the following commands:
+
+```bash
+objcopy --only-keep-debug "${binary_file}" "${debug_symbols_file}"
+strip --strip-debug --strip-unneeded "${binary_file}"
+objcopy --add-gnu-debuglink="${debug_symbols_file}" "${binary_file}"
+```
+
+This will make the binary file much smaller for deployment, while the  debug symbols file can be kept in the *Development* machine for crash analysis. Note the two files are *linked* together (via checsums and file name mechanisms) through the last command of the snippet above.
+
+In the test project, the symbols separation is done automatically after building the application by the [`qpostprocess.pri` file](./src/qpostprocess.pri).
 
 ---
 
@@ -232,3 +291,7 @@ For **Linux** the breakpad library requires the `linux_syscall_support.h` file w
 * 7. <https://developer.mozilla.org/en-US/docs/Mozilla/Debugging/Debugging_a_minidump#Using_minidump-2-core_on_Linux>
 
 * 8. <https://doc.qt.io/qtcreator/creator-debugger-operating-modes.html#launching-in-core-mode>
+
+* 9. <https://stackoverflow.com/questions/866721/how-to-generate-gcc-debug-symbol-outside-the-build-target>
+
+* 10. <https://www.computerhope.com/unix/strip.htm>

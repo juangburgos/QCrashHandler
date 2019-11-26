@@ -86,7 +86,7 @@ for f in ${!list_lines[@]}; do
     if [[ $machine == "Linux" ]]; then
     	# read gnu_debuglink
 		sym_file=$(readelf --string-dump=.gnu_debuglink "${bin_filepath}" | sed -n '/]/{s/.* //;p;q}')
-		# if gnu_debuglink file exists, then update file name used to extract symbols
+		# if gnu_debuglink file exists, then use pointed file to extract symbols instead
 		if [[ ! -e ${sym_file} ]]; then
 			sym_file=${bin_dir}/${sym_file}
 		fi
