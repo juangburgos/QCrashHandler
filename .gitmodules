@@ -1,4 +1,6 @@
 [submodule "deps/breakpad.git"]
 	path = deps/breakpad.git
 	url = https://github.com/google/breakpad.git
-	branch = master
+[submodule "deps/linux_syscall.git"]
+	path = deps/linux_syscall.git
+	url = https://chromium.googlesource.com/linux-syscall-support
