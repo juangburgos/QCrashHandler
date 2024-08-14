@@ -1,5 +1,21 @@
 ## How to Use
 
+### With *CMake* projects:
+Add subdirectory `./src` from this repository to your project's `CMakeLists.txt` and enable `ASM` language when on Unix:
+```cmake
+if(UNIX)
+    enable_language(ASM)
+endif(UNIX)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src)
+```
+Add `QCrashHandler` library to your target:
+```camke
+target_link_libraries(<target> ... QCrashHandler ...)
+```
+For release builds select [RelWithDebInfo](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html) build type.
+
+### With *qmake* projects:
 In your *Qt* project file (`*.pro`) simply *include* the `./src/qcrashhandler.pri` file from this repository:
 
 ```cmake
@@ -18,7 +34,7 @@ CONFIG(debug, debug|release) {
     QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO -= -O2
 }
 ```
-
+### Usage in code
 The on your `main` function create and intialize the crash handler, *after* creating the `QApplication` object;
 
 ```c++
