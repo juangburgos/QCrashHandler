@@ -57,6 +57,7 @@ linux-g++ {
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/linux_dumper.h \
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/linux_ptrace_dumper.h \
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/directory_reader.h \
+        $$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/pe_file.h \
 	$$PWD/../deps/breakpad.git/src/client/linux/log/log.h \
 	$$PWD/../deps/breakpad.git/src/client/minidump_file_writer-inl.h \
 	$$PWD/../deps/breakpad.git/src/client/minidump_file_writer.h \
@@ -93,6 +94,7 @@ linux-g++ {
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/minidump_writer.cc \
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/linux_dumper.cc \
 	$$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/linux_ptrace_dumper.cc \
+        $$PWD/../deps/breakpad.git/src/client/linux/minidump_writer/pe_file.cc \
 	$$PWD/../deps/breakpad.git/src/client/linux/log/log.cc \
 	$$PWD/../deps/breakpad.git/src/client/minidump_file_writer.cc \
 	$$PWD/../deps/breakpad.git/src/common/linux/linux_libc_support.cc \
